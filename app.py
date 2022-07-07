@@ -14,11 +14,6 @@ from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 
 
-# Variables
-# Change them if you are using custom model or pretrained model with saved weigths
-#Model_json = ".json"
-#Model_weigths = ".h5"
-
 
 # Declare a flask app
 app = Flask(__name__)
@@ -26,38 +21,9 @@ app = Flask(__name__)
 def get_ImageClassifierModel():
     model = tf.keras.models.load_model('BrainTumorClassification');
 
-    # Loading the pretrained model
-    # model_json = open(Model_json, 'r')
-    # loaded_model_json = model_json.read()
-    # model_json.close()
-    # model = model_from_json(loaded_model_json)
-    # model.load_weights(Model_weigths)
-
     return model
 
 
-
-def model_predict(img, model):
-    '''
-    Prediction Function for model.
-    Arguments:
-        img: is address to image
-        model : image classification model
-    '''
-    #300 300
-    img = img.resize((300, 300))
-
-    # Preprocessing the image
-    x = image.img_to_array(img)
-    # x = np.true_divide(x, 255)
-    x = np.expand_dims(x, axis=0)
-
-    # Be careful how your trained model deals with the input
-    # otherwise, it won't make correct prediction!
-    x = preprocess_input(x, mode='tf')
-
-    preds = model.predict(x)
-    return preds
 
 
 @app.route('/', methods=['GET'])
@@ -77,21 +43,21 @@ def predict():
     if request.method == 'POST':
         # Get the image from post request
         img = base64_to_pil(request.json)
-
+        img = img.resize((300, 300))
         # initialize model
         model = get_ImageClassifierModel()
+        img_array = tf.keras.utils.img_to_array(img)
+        img_array = tf.expand_dims(img_array, 0) # Create a batch
 
-        # Make prediction
-        preds = model_predict(img, model)
+        predictions = model.predict(img_array)
+        score = tf.nn.softmax(predictions[0])
 
-        pred_proba = "{:.3f}".format(np.amax(preds))    # Max probability
-        #pred_class = decode_predictions(preds, top=1)   # ImageNet Decode
+        class_names=['glioma_tumor', 'meningioma_tumor', 'no_tumor', 'pituitary_tumor']
 
-        #result = str(pred_class[0][0][1])               # Convert to string
-        #result = result.replace('_', ' ').capitalize()
-
+        pred_proba = "{:.2f}".format(100*np.max(score))    # NEW  Max probability
+        type="{}".format(class_names[np.argmax(score)])
         # Serialize the result, you can add additional fields
-        return jsonify(result=pred_proba, probability=pred_proba)
+        return jsonify(result=type, probability=pred_proba)
     return None
 
 
