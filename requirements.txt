@@ -1,6 +1,4 @@
 Flask
-numpy
 Pillow
-keras
 tensorflow
 gunicorn
